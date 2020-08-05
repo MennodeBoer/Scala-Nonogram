@@ -67,11 +67,11 @@ object Nonogram {
     } yield (key , vs.nonEmpty && vs.head > 1)).toMap
   }
 
-  def show(width:Int)(solution: Board) : String = {
+  def show(solution: Board) : String = {
     val lines = for{
       fit <- solution
       pic = fit.map{ case (key,_)=>(key,"x")}
-    } yield (0 to width).map(n => pic.getOrElse(n," ")).mkString
+    } yield (0 to fit.keys.max).map(n => pic.getOrElse(n," ")).mkString
     "\n" + (lines mkString "\n")
   }
 }

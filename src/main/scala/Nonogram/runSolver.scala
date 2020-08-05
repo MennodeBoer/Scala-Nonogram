@@ -13,7 +13,7 @@ object runSolver {
       val (rawRows, _ :: rawCols) = str.tail.span(_ != "Collumns:")
       val rows: List[Row] = rawRows map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())
       val cols: Vector[Col] = (rawCols map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())).toVector
-      println((solve(rows, cols) map show(cols.length)) mkString "\n")
+      println((solve(rows, cols) map show) mkString "\n")
       content.close()
     }
   }
