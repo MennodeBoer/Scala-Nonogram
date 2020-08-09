@@ -23,7 +23,6 @@ object Nonogram {
         constr = addEmptyCols(rest.getOrElse(index,Map()),cs)
         fit <- fitOptions(row, width)
         if isSafe(fit, constr)
-        _ = if (index == 10) println(fit + "\n")
         (newValues, newCollums) = update(cs, fit, constr)
         if checkCols(newCollums, height - index)
         } yield (applyValues(rest, newValues, index), newCollums)
