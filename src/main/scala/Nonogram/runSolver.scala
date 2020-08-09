@@ -11,8 +11,8 @@ object runSolver {
       val content = Source.fromFile(filename)
       val str = content.getLines.toList
       val (rawRows, _ :: rawCols) = str.tail.span(_ != "Collumns:")
-      val rows: List[Row] = (rawRows map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())).zipWithIndex.reverse
-      val cols: List[Col] = rawCols map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())
+      val rows: List[Options] = rawRows map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())
+      val cols: List[Options] = rawCols map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())
       println((solve(rows, cols) map show) mkString "\n")
       content.close()
     }

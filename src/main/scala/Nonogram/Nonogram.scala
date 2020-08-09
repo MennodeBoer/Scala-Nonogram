@@ -3,20 +3,22 @@ package Nonogram
 object Nonogram {
 
   type Options = List[Int]
-  type Row = (List[Int],Int)
+  type Row = (Options, Int)
   type Rows = List[Row]
-  type Col = List[Int]
+  type Col = (Options, Int)
   type Cols = List[Col]
   type Fit = Set[Int]
   type Constr = Map[Int,Boolean]
   type Board = Map[Int,Map[Int,Boolean]]
 
-  def solve(rows: Rows, cols: Cols): Set[Board] = {
-    val width = cols.length
-    val height = rows.length
+  def solve(rowOpts: List[Options], colOpts: List[Options]): Set[Board] = {
+    val width = colOpts.length
+    val height = rowOpts.length
+    val rows = rowOpts.zipWithIndex.reverse
+    val cols = colOpts map (c => (c,addCol(c)))
 
     def partialSolve(rows: Rows): Set[(Board, Cols)] = rows match {
-      case List() => Set((Map[Int,Map[Int,Boolean]](),cols))
+      case List() => Set((Map[Int,Constr](),cols))
       case (row, index) :: rs =>
         for {
         (rest, cs) <- partialSolve(rs)
@@ -24,7 +26,7 @@ object Nonogram {
         fit <- fitOptions(row, width)
         if isSafe(fit, constr)
         (newValues, newCollums) = update(cs, fit, constr)
-        if checkCols(newCollums, height - index)
+        if checkCols(newCollums, height + 1)
         } yield (applyValues(rest, newValues, index), newCollums)
     }
     partialSolve(rows).map(_._1)
@@ -42,7 +44,7 @@ object Nonogram {
   }
 
   def addEmptyCols(constr: Constr, cols: Cols) : Constr = {
-    cols.zipWithIndex.foldRight(constr){case ((col, index), acc) =>
+    cols.zipWithIndex.foldRight(constr){case (((col, _), index), acc) =>
       if (col.isEmpty && !constr.isDefinedAt(index))
         acc ++ Map(index -> false)
       else
@@ -51,13 +53,7 @@ object Nonogram {
   }
 
   def checkCols(cols: Cols, bound: Int) : Boolean =
-    {
-      def addCol(col: Col) : Int = col match{
-        case List() => 0
-        case c::cs =>  cs.foldRight(c)(_+_+1)
-      }
-      cols.map(addCol(_) <= bound).forall(identity)
-    }
+    cols.map(_._2 <= bound).forall(identity)
 
   def isSafe(fit: Fit, constr: Constr): Boolean = {
     val check1 = (for {
@@ -70,13 +66,18 @@ object Nonogram {
     } yield constr(key)).forall(identity)
     check1 && check2
   }
+  def addCol(col: Options) : Int = col match {
+    case List() => 0
+    case c :: cs => cs.foldRight(c)(_ + _ + 1)
+  }
+
 
   def update(cols: Cols, fit: Fit, constr: Constr): (Map[Int,Int], Cols) = {
-    cols.zipWithIndex.foldRight((Map[Int,Int](), List[Col]())){case ((col, index), (m, v)) =>
+    cols.zipWithIndex.foldRight((Map[Int,Int](), List[Col]())){case (((col, height), index), (m, v)) =>
     if (constr.isDefinedAt(index) || !fit.contains(index))
-      (m, col::v)
+      (m, (col, if (col.isEmpty || constr.isDefinedAt(index)) height else height + 1)::v)
     else
-      (m ++ Map(index -> col.head), col.tail::v)
+      (m ++ Map(index -> col.head), (col.tail, height)::v)
     }
   }
 
@@ -91,7 +92,7 @@ object Nonogram {
 
   def show(solution: Board) : String = {
     val lines = for {
-      index <- (0 to solution.keys.max).toList
+      index <- (0 to (if (solution.keys.isEmpty) -1 else solution.keys.max)).toList
       row = solution.getOrElse(index,Map(0 -> false))
       pic = row.map{ case (key,b)=>(key,if (b) "x" else " ")}
     } yield (0 to row.keys.max).map(n => pic.getOrElse(n," ")).mkString
