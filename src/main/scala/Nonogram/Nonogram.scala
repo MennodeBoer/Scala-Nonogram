@@ -2,76 +2,100 @@ package Nonogram
 
 object Nonogram {
 
-  type Row = List[Int]
+  type Options = List[Int]
+  type Row = (List[Int],Int)
   type Rows = List[Row]
   type Col = List[Int]
-  type Cols = Vector[Col]
-  type Fit = Map[Int,()]
+  type Cols = List[Col]
+  type Fit = Set[Int]
   type Constr = Map[Int,Boolean]
-  type Board = List[Fit]
+  type Board = Map[Int,Map[Int,Boolean]]
 
-  def solve(rows: List[Row], cols: Cols): Set[Board] = {
-    val width = cols.toList.length
+  def solve(rows: Rows, cols: Cols): Set[Board] = {
+    val width = cols.length
+    val height = rows.length
 
-    def partialSolve(rows: List[Row], acc: Cols, constr: Constr): Set[Board] = rows match {
-      case List() => Set(List())
-      case r :: rs => for {
-        fit <- fitOptions(r,0, width)
-        if isSafe(fit,constr)
-        cs = updateCols(acc, fit)
-        newConstr = updateConstr(acc, fit)
-        rest <- partialSolve(rs, cs, newConstr)
-      } yield fit :: rest
+    def partialSolve(rows: Rows): Set[(Board, Cols)] = rows match {
+      case List() => Set((Map[Int,Map[Int,Boolean]](),cols))
+      case (row, index) :: rs =>
+        for {
+        (rest, cs) <- partialSolve(rs)
+        constr = addEmptyCols(rest.getOrElse(index,Map()),cs)
+        fit <- fitOptions(row, width)
+        if isSafe(fit, constr)
+        _ = if (index == 10) println(fit + "\n")
+        (newValues, newCollums) = update(cs, fit, constr)
+        if checkCols(newCollums, height - index)
+        } yield (applyValues(rest, newValues, index), newCollums)
     }
-    partialSolve(rows, cols, Map())
+    partialSolve(rows).map(_._1)
   }
 
-  def fitOptions (row: Row, min: Int, max: Int): Set[Fit] = {
-    def fitAcc(r: Row, acc: Int) : Set[(Fit,Int)] = r match {
-      case List () => Set((Map[Int,()]() withDefaultValue (), max))
+  def fitOptions (row: Options, max: Int): Set[Fit] = {
+    def fitAcc(r: Options, acc: Int) : Set[(Fit, Int)] = r match {
+      case List () => Set((Set(), max))
       case v :: vs => for {
         (rest, bound) <- fitAcc(vs, acc + v + 1)
         n <- (acc to (bound - v)).toList
-        m = for {p <- (n until (n + v)).toList} yield p -> ()
-      }  yield (rest ++ m, n - 1)
+      }  yield (rest union (n until (n + v)).toSet, n - 1)
     }
-    fitAcc(row,min).map(_._1)
+    fitAcc(row,0).map(_._1)
   }
+
+  def addEmptyCols(constr: Constr, cols: Cols) : Constr = {
+    cols.zipWithIndex.foldRight(constr){case ((col, index), acc) =>
+      if (col.isEmpty && !constr.isDefinedAt(index))
+        acc ++ Map(index -> false)
+      else
+        acc
+    }
+  }
+
+  def checkCols(cols: Cols, bound: Int) : Boolean =
+    {
+      def addCol(col: Col) : Int = col match{
+        case List() => 0
+        case c::cs =>  cs.foldRight(c)(_+_+1)
+      }
+      cols.map(addCol(_) <= bound).forall(identity)
+    }
 
   def isSafe(fit: Fit, constr: Constr): Boolean = {
     val check1 = (for {
       key <- constr.keys
       if constr(key)
-    } yield fit.isDefinedAt(key)).forall(identity)
+    } yield fit contains key).forall(identity)
     val check2 = (for {
-      key <- fit.keys
+      key <- fit
       if constr.isDefinedAt(key)
     } yield constr(key)).forall(identity)
     check1 && check2
   }
 
-  def updateCols(cols: Cols, fit: Fit): Cols = {
-    def updateCol(vs : List[Int]) : List[Int] = {
-        val v = vs.head - 1
-        if (v == 0) vs.tail else v :: vs.tail
-    }
-    cols.zipWithIndex.map{
-      case (vs, key) => if (fit.isDefinedAt(key)) updateCol(vs) else vs
+  def update(cols: Cols, fit: Fit, constr: Constr): (Map[Int,Int], Cols) = {
+    cols.zipWithIndex.foldRight((Map[Int,Int](), List[Col]())){case ((col, index), (m, v)) =>
+    if (constr.isDefinedAt(index) || !fit.contains(index))
+      (m, col::v)
+    else
+      (m ++ Map(index -> col.head), col.tail::v)
     }
   }
 
-  def updateConstr(cols: Cols, fit: Fit): Constr = {
-    (for{
-      (vs, key) <- cols.zipWithIndex
-      if fit.isDefinedAt(key) || vs.isEmpty
-    } yield (key , vs.nonEmpty && vs.head > 1)).toMap
-  }
+  def applyValues(board: Board, values: Map[Int, Int], index: Int) : Board =
+    {
+      values.foldRight(board) { case ((col, value), b1) =>
+        val end = index + value
+        (index to end).foldRight(b1){case (row, b2) =>
+          b2 ++ Map(row -> (b2.getOrElse(row,Map()) ++ Map(col -> (row < end))))}
+      }
+    }
 
   def show(solution: Board) : String = {
-    val lines = for{
-      fit <- solution
-      pic = fit.map{ case (key,_)=>(key,"x")}
-    } yield (0 to fit.keys.max).map(n => pic.getOrElse(n," ")).mkString
+    val lines = for {
+      index <- (0 to solution.keys.max).toList
+      row = solution.getOrElse(index,Map(0 -> false))
+      pic = row.map{ case (key,b)=>(key,if (b) "x" else " ")}
+    } yield (0 to row.keys.max).map(n => pic.getOrElse(n," ")).mkString
     "\n" + (lines mkString "\n")
   }
 }
