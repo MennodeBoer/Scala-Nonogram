@@ -10,7 +10,7 @@ object runSolver {
       val filename = "src/test/Examples/" + args(0)
       val content = Source.fromFile(filename)
       val str = content.getLines.toList
-      val (rawRows, _ :: rawCols) = str.tail.span(_ != "Collumns:")
+      val (rawRows, _ :: rawCols) = str.tail.span(_ != "Columns:")
       val rows: List[Options] = rawRows map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())
       val cols: List[Options] = rawCols map (r => if (r.nonEmpty) (r split " ").toList map (_.toInt) else List())
       println((solve(rows, cols) map show) mkString "\n")

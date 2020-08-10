@@ -29,7 +29,7 @@ Rows:
 2 2 2
 2 5
 1 6
-Collumns:
+Columns:
 9 12 5
 10 4 6
 11 1 2 6

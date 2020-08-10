@@ -25,9 +25,9 @@ object Nonogram {
         constr = addEmptyCols(rest.getOrElse(index,Map()),cs)
         fit <- fitOptions(row, width)
         if isSafe(fit, constr)
-        (newValues, newCollums) = update(cs, fit, constr)
-        if checkCols(newCollums, height + 1)
-        } yield (applyValues(rest, newValues, index), newCollums)
+        (newValues, newColums) = update(cs, fit, constr)
+        if checkCols(newColums, height + 1)
+        } yield (applyValues(rest, newValues, index), newColums)
     }
     partialSolve(rows).map(_._1)
   }
